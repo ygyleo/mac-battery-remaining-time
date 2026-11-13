@@ -1,0 +1,45 @@
+name: BatteryTime
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    macOS: "13.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: YES
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+packages:
+  BatteryCore:
+    path: .
+targets:
+  BatteryTime:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/BatteryTime
+      - Resources/Assets.xcassets
+    dependencies:
+      - package: BatteryCore
+    settings:
+      base:
+        PRODUCT_NAME: Battery Time
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ygyleo.BatteryTime
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+schemes:
+  BatteryTime:
+    build:
+      targets:
+        BatteryTime: all
+    run:
+      config: Debug
+    archive:
+      config: Release

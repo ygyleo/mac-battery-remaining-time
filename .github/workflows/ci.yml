@@ -1,0 +1,37 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Test battery logic
+        run: swift test --scratch-path build/swift-tests
+      - name: Build Apple Silicon app
+        run: bash scripts/build-release.sh
+      - name: Package disk image
+        run: bash scripts/package-dmg.sh
+      - name: Keep build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Battery-Time-arm64
+          path: |
+            dist/*.dmg
+            dist/SHA256SUMS.txt
+          if-no-files-found: error

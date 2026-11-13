@@ -1,0 +1,17 @@
+# Local credentials must never be published.
+apikey*
+*api_key*
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
+
+.DS_Store
+.build/
+build/
+dist/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+BatteryTime.xcodeproj/

@@ -3,44 +3,34 @@ import BatteryCore
 import Combine
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private let monitor = BatteryMonitor()
     private let preferences = Preferences()
+    private let batteryMenu = BatteryMenu()
     private var statusItem: NSStatusItem!
-    private let menu = NSMenu()
-    private let chargeItem = NSMenuItem()
-    private let timeItem = NSMenuItem()
-    private let settingsItem = NSMenuItem()
-    private let quitItem = NSMenuItem()
     private var settingsWindow: NSWindow?
-    private var languageSubscription: AnyCancellable?
+    private var preferencesSubscription: AnyCancellable?
+    private let appQuitItem = NSMenuItem()
+    private let windowMenuItem = NSMenuItem()
+    private let closeWindowItem = NSMenuItem()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Avoid duplicate status items if the app is launched a second time.
         if let id = Bundle.main.bundleIdentifier,
            NSRunningApplication.runningApplications(withBundleIdentifier: id).count > 1 {
             NSApp.terminate(nil)
             return
         }
+        let opensSettings = LaunchContext.shouldOpenSettings(for: NSAppleEventManager.shared().currentAppleEvent)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.autosaveName = "BatteryTime"
-        menu.autoenablesItems = false
-        menu.delegate = self
-        chargeItem.isEnabled = false
-        timeItem.isEnabled = false
-        settingsItem.target = self
-        settingsItem.action = #selector(showSettings)
-        settingsItem.keyEquivalent = ","
-        quitItem.target = self
-        quitItem.action = #selector(quit)
-        quitItem.keyEquivalent = "q"
-        [chargeItem, timeItem, .separator(), settingsItem, .separator(), quitItem].forEach(menu.addItem)
-        statusItem.menu = menu
+        batteryMenu.menu.delegate = self
+        statusItem.menu = batteryMenu.menu
+        configureApplicationMenu()
         monitor.onChange = { [weak self] _ in self?.update() }
-        languageSubscription = preferences.$language.receive(on: RunLoop.main).sink { [weak self] _ in
-            self?.update()
-        }
+        preferencesSubscription = preferences.$language.combineLatest(preferences.$showTimeInMenuBar)
+            .receive(on: RunLoop.main).sink { [weak self] _ in self?.update() }
         update()
+        if opensSettings { showSettings() }
     }
 
     func menuWillOpen(_ menu: NSMenu) { monitor.refresh() }
@@ -50,54 +40,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func windowWillClose(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    private func configureApplicationMenu() {
+        let mainMenu = NSMenu()
+        let applicationItem = NSMenuItem()
+        let applicationMenu = NSMenu(title: "Battery Time")
+        appQuitItem.target = NSApp
+        appQuitItem.action = #selector(NSApplication.terminate(_:))
+        appQuitItem.keyEquivalent = "q"
+        applicationMenu.addItem(appQuitItem)
+        applicationItem.submenu = applicationMenu
+        mainMenu.addItem(applicationItem)
+        let windowMenu = NSMenu()
+        closeWindowItem.action = #selector(NSWindow.performClose(_:))
+        closeWindowItem.keyEquivalent = "w"
+        windowMenu.addItem(closeWindowItem)
+        windowMenuItem.submenu = windowMenu
+        mainMenu.addItem(windowMenuItem)
+        NSApp.mainMenu = mainMenu
+    }
+
     private func update() {
         guard let button = statusItem?.button else { return }
         let snapshot = monitor.snapshot
         let text = preferences.text
         button.image = BatteryIcon.image(for: snapshot)
-        button.imagePosition = .imageLeading
-        button.title = " " + text.statusTitle(snapshot: snapshot)
+        button.imagePosition = preferences.showTimeInMenuBar ? .imageLeading : .imageOnly
+        button.title = preferences.showTimeInMenuBar ? " " + text.statusTitle(snapshot: snapshot) : ""
         button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         let charge = text.chargeValue(snapshot: snapshot)
         let remaining = text.remainingValue(snapshot: snapshot)
         button.toolTip = "\(text.chargeLabel): \(charge)\n\(text.remainingLabel): \(remaining)"
         button.setAccessibilityLabel("Battery Time. \(text.chargeLabel): \(charge). \(text.remainingLabel): \(remaining)")
-        setDataRow(chargeItem, label: text.chargeLabel, value: charge)
-        setDataRow(timeItem, label: text.remainingLabel, value: remaining)
-        settingsItem.title = text.settings
-        quitItem.title = text.quit
+        batteryMenu.update(snapshot: snapshot, text: text)
+        appQuitItem.title = text.quit + " Battery Time"
+        windowMenuItem.title = preferences.language == .chinese ? "窗口" : "Window"
+        closeWindowItem.title = preferences.language == .chinese ? "关闭窗口" : "Close Window"
         settingsWindow?.title = text.settingsTitle
     }
 
-    private func setDataRow(_ item: NSMenuItem, label: String, value: String) {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: 300)]
-        let text = NSMutableAttributedString(string: label + "\t" + value, attributes: [
-            .font: NSFont.menuFont(ofSize: 13),
-            .foregroundColor: NSColor.labelColor,
-            .paragraphStyle: paragraph
-        ])
-        text.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium),
-                          range: NSRange(location: (label as NSString).length + 1, length: (value as NSString).length))
-        item.title = label + ": " + value
-        item.attributedTitle = text
-        item.setAccessibilityLabel(item.title)
-    }
-
-    @objc private func showSettings() {
+    private func showSettings() {
         if settingsWindow == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 148),
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 188),
                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.contentView = NSHostingView(rootView: SettingsView(preferences: preferences))
             window.isReleasedWhenClosed = false
+            window.delegate = self
             window.title = preferences.text.settingsTitle
             window.center()
             settingsWindow = window
         }
         preferences.refreshLoginStatus()
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
-
-    @objc private func quit() { NSApp.terminate(nil) }
 }

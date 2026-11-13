@@ -33,6 +33,39 @@ final class BatteryParserTests: XCTestCase {
         XCTAssertNil(result.minutesRemaining)
     }
 
+    func testPowerSymbolDistinguishesChargingFromConnectedAndDischarging() {
+        let charging = BatteryParser.parse([battery([
+            "Power Source State": "AC Power", "Is Charging": true
+        ])])
+        let paused = BatteryParser.parse([battery([
+            "Power Source State": "AC Power", "Is Charging": false
+        ])])
+        let full = BatteryParser.parse([battery([
+            "Power Source State": "AC Power", "Current Capacity": 100,
+            "Is Charging": false, "Is Charged": true
+        ])])
+        // A stale charging flag after unplugging must not leave a lightning badge.
+        let unplugged = BatteryParser.parse([battery(["Is Charging": true])])
+        XCTAssertEqual(charging.powerSymbol, .bolt)
+        XCTAssertEqual(paused.powerSymbol, .plug)
+        XCTAssertEqual(full.powerSymbol, .plug)
+        XCTAssertEqual(unplugged.powerSymbol, .none)
+        XCTAssertEqual(BatterySnapshot.unavailable.powerSymbol, .none)
+    }
+
+    func testPluggingInNeverReplacesCurrentBatteryLevel() {
+        for charging in [true, false] {
+            for percent in [0, 5, 50, 80, 100] {
+                let snapshot = BatteryParser.parse([battery([
+                    "Power Source State": "AC Power", "Is Charging": charging,
+                    "Current Capacity": percent, "Is Charged": percent == 100 && !charging
+                ])])
+                XCTAssertEqual(snapshot.percent, percent)
+                XCTAssertEqual(BatteryText(language: .chinese).chargeValue(snapshot: snapshot), "\(percent)%")
+            }
+        }
+    }
+
     func testBatteryStateDiscardsStaleChargeTime() {
         let result = BatteryParser.parse([battery(["Time to Full Charge": 45])])
         XCTAssertNil(result.minutesToFull)

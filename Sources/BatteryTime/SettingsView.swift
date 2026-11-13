@@ -13,6 +13,8 @@ struct SettingsView: View {
             }
             .pickerStyle(.menu)
 
+            Toggle(preferences.text.showTimeInMenuBarLabel, isOn: $preferences.showTimeInMenuBar)
+
             Toggle(preferences.text.launchAtLoginLabel, isOn: Binding(
                 get: { preferences.loginEnabled },
                 set: { preferences.setLoginEnabled($0) }
@@ -26,7 +28,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding(4)
-        .frame(width: 360, height: preferences.needsApproval ? 192 : 148)
+        .frame(width: 360, height: preferences.needsApproval ? 232 : 188)
         .fixedSize()
         .environment(\.locale, Locale(identifier: preferences.language.rawValue))
         .alert(preferences.text.loginErrorTitle, isPresented: Binding(

@@ -7,6 +7,9 @@ let package = Package(
     products: [.library(name: "BatteryCore", targets: ["BatteryCore"])],
     targets: [
         .target(name: "BatteryCore"),
-        .testTarget(name: "BatteryCoreTests", dependencies: ["BatteryCore"])
+        .testTarget(name: "BatteryCoreTests", dependencies: ["BatteryCore"]),
+        .target(name: "BatteryAppSupport", dependencies: ["BatteryCore"],
+                path: "Sources/BatteryTime", exclude: ["main.swift"]),
+        .testTarget(name: "BatteryAppTests", dependencies: ["BatteryAppSupport", "BatteryCore"])
     ]
 )

@@ -9,6 +9,10 @@ public enum BatteryTint: Equatable {
     case normal, yellow, red
 }
 
+public enum BatteryPowerSymbol: Equatable {
+    case none, bolt, plug
+}
+
 public struct BatterySnapshot: Equatable {
     public let percent: Int?
     public let isOnAC: Bool
@@ -28,6 +32,11 @@ public struct BatterySnapshot: Equatable {
     }
 
     public static let unavailable = BatterySnapshot()
+    public var powerSymbol: BatteryPowerSymbol {
+        guard isOnAC else { return .none }
+        return isCharging ? .bolt : .plug
+    }
+
     public var tint: BatteryTint {
         guard !isOnAC, let percent else { return .normal }
         if percent <= 10 { return .red }

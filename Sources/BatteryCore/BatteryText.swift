@@ -60,6 +60,7 @@ public struct BatteryText {
     public var quit: String { localized("退出", "Quit") }
     public var languageLabel: String { localized("语言", "Language") }
     public var launchAtLoginLabel: String { localized("开机自启动", "Launch at login") }
+    public var showTimeInMenuBarLabel: String { localized("在菜单栏显示剩余时间", "Show time in menu bar") }
     public var settingsTitle: String { localized("设置", "Settings") }
     public var loginApprovalMessage: String { localized("请在系统设置的登录项中允许 Battery Time。", "Allow Battery Time in System Settings → Login Items.") }
     public var loginErrorTitle: String { localized("无法更改开机自启动", "Could not change launch at login") }

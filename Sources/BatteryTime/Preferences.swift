@@ -4,16 +4,22 @@ import Combine
 import ServiceManagement
 
 final class Preferences: ObservableObject {
+    private let defaults: UserDefaults
     @Published var language: AppLanguage {
-        didSet { UserDefaults.standard.set(language.rawValue, forKey: "language") }
+        didSet { defaults.set(language.rawValue, forKey: "language") }
+    }
+    @Published var showTimeInMenuBar: Bool {
+        didSet { defaults.set(showTimeInMenuBar, forKey: "showTimeInMenuBar") }
     }
     @Published private(set) var loginEnabled = false
     @Published private(set) var needsApproval = false
     @Published var loginError: String?
     private var activationObserver: NSObjectProtocol?
 
-    init() {
-        if let value = UserDefaults.standard.string(forKey: "language"),
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        showTimeInMenuBar = defaults.object(forKey: "showTimeInMenuBar") as? Bool ?? true
+        if let value = defaults.string(forKey: "language"),
            let stored = AppLanguage(rawValue: value) {
             language = stored
         } else {

@@ -19,7 +19,7 @@
 - [x] BatteryCore: parse internal batteries, validate capacities and time estimates, localize time/status; test thresholds, missing values, AC transitions and both languages.
 - [x] Native app: NSStatusItem and NSMenu with two data rows; system power events plus low-frequency refresh and wake refresh; SwiftUI settings persisted through UserDefaults and real SMAppService status.
 - [x] Packaging: restrained app icon, reproducible build and drag-install DMG, architecture and signature validation.
-- [ ] Review and release: inspect native UI, run all core tests and release build, inspect tracked files for secrets, publish MIT public repo and v1.0.0 release.
+- [x] Review and release: inspect native UI, run all core tests and release build, inspect tracked files for secrets, publish MIT public repo and v1.0.0 release.
 
 ## Review focus
 

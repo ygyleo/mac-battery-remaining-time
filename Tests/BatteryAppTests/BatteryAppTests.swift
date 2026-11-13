@@ -7,7 +7,15 @@ import XCTest
 
 final class BatteryAppTests: XCTestCase {
     func testChargingBoltKeepsWhiteFillBlackBorderAndExtendsPastBattery() {
-        let image = BatteryIcon.image(for: BatterySnapshot(percent: 74, isOnAC: true, isCharging: true),
+        assertOutlinedPowerBadge(BatterySnapshot(percent: 74, isOnAC: true, isCharging: true))
+    }
+
+    func testPlugKeepsWhiteFillBlackBorderAndExtendsPastBattery() {
+        assertOutlinedPowerBadge(BatterySnapshot(percent: 74, isOnAC: true))
+    }
+
+    private func assertOutlinedPowerBadge(_ snapshot: BatterySnapshot) {
+        let image = BatteryIcon.image(for: snapshot,
                                       appearance: NSAppearance(named: .darkAqua))
         XCTAssertFalse(image.isTemplate, "Template tinting would erase the white fill and black border")
         let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 50, pixelsHigh: 36,
@@ -19,11 +27,12 @@ final class BatteryAppTests: XCTestCase {
         NSGraphicsContext.restoreGraphicsState()
         var whiteOutsideBattery = 0
         var blackBorder = 0
+        let whiteMinimum: CGFloat = snapshot.powerSymbol == .plug ? 0.9 : 0.95
         for y in 0..<36 {
             for x in 0..<50 {
                 let color = bitmap.colorAt(x: x, y: y)!.usingColorSpace(.deviceRGB)!
                 guard color.alphaComponent > 0.9 else { continue }
-                if color.redComponent > 0.95 && color.greenComponent > 0.95 && color.blueComponent > 0.95,
+                if color.redComponent > whiteMinimum && color.greenComponent > whiteMinimum && color.blueComponent > whiteMinimum,
                    y < 6 || y >= 30 { whiteOutsideBattery += 1 }
                 if color.redComponent < 0.1 && color.greenComponent < 0.1 && color.blueComponent < 0.1 {
                     blackBorder += 1

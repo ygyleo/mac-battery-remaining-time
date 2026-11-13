@@ -7,6 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let monitor = BatteryMonitor()
     private let preferences = Preferences()
     private let batteryMenu = BatteryMenu()
+    private let charging = ChargeToFullController(service: SystemChargingService(),
+                                                  readBattery: BatteryMonitor.readSystemSnapshot)
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
     private var preferencesSubscription: AnyCancellable?
@@ -30,14 +32,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self?.update()
         }
         configureApplicationMenu()
-        monitor.onChange = { [weak self] _ in self?.update() }
+        monitor.onChange = { [weak self] _ in
+            self?.update()
+            self?.charging.batteryDidChange()
+        }
+        charging.onChange = { [weak self] in self?.updateChargeAction() }
+        charging.onError = { [weak self] _ in self?.showChargeError() }
         preferencesSubscription = preferences.$language.combineLatest(preferences.$showTimeInMenuBar)
             .receive(on: RunLoop.main).sink { [weak self] _ in self?.update() }
         update()
         if opensSettings { showSettings() }
     }
 
-    func menuWillOpen(_ menu: NSMenu) { monitor.refresh() }
+    func menuWillOpen(_ menu: NSMenu) {
+        monitor.refresh()
+        charging.refresh()
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showSettings()
@@ -82,10 +92,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         button.toolTip = "\(text.chargeLabel): \(charge)\n\(text.remainingLabel): \(remaining)"
         button.setAccessibilityLabel("Battery Time. \(text.chargeLabel): \(charge). \(text.remainingLabel): \(remaining)")
         batteryMenu.update(snapshot: snapshot, text: text)
+        updateChargeAction()
         appQuitItem.title = text.quit + " Battery Time"
         windowMenuItem.title = preferences.language == .chinese ? "窗口" : "Window"
         closeWindowItem.title = preferences.language == .chinese ? "关闭窗口" : "Close Window"
         settingsWindow?.title = text.settingsTitle
+    }
+
+    private func updateChargeAction() {
+        let title: String?
+        let enabled: Bool
+        switch charging.presentation {
+        case .hidden:
+            title = nil
+            enabled = false
+        case .available:
+            title = preferences.text.chargeToFull
+            enabled = true
+        case .requesting:
+            title = preferences.text.requestingCharge
+            enabled = false
+        case .requested:
+            title = preferences.text.chargeRequested
+            enabled = false
+        }
+        let offer = charging.offer
+        batteryMenu.setChargeAction(title: title, enabled: enabled) { [weak self] in
+            // Let the status menu finish dismissing before showing a sheet/alert.
+            guard let offer else { return }
+            DispatchQueue.main.async { self?.requestFullCharge(offer) }
+        }
+    }
+
+    private func requestFullCharge(_ offer: ChargingOffer) {
+        if offer.mode == .limit {
+            let alert = NSAlert()
+            alert.messageText = preferences.text.chargeToFull
+            alert.informativeText = preferences.text.manualLimitMessage
+            alert.addButton(withTitle: preferences.text.chargeToFull)
+            alert.addButton(withTitle: preferences.text.cancel)
+            NSApp.activate(ignoringOtherApps: true)
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        charging.request(expectedOffer: offer)
+    }
+
+    private func showChargeError() {
+        let alert = NSAlert()
+        alert.messageText = preferences.text.chargeRequestFailed
+        alert.informativeText = preferences.text.chargeRequestFailureMessage
+        alert.addButton(withTitle: preferences.text.ok)
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     private func showSettings() {

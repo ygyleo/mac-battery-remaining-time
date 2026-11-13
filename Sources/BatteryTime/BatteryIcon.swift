@@ -3,13 +3,12 @@ import BatteryCore
 
 enum BatteryIcon {
     private static let bolt = croppedSystemSymbol("bolt.fill")
-    private static let plug = croppedSystemSymbol("powerplug.fill")
 
     static func image(for snapshot: BatterySnapshot, appearance: NSAppearance? = nil) -> NSImage {
-        let charging = snapshot.powerSymbol == .bolt
+        let hasPowerBadge = snapshot.powerSymbol != .none
         var foreground = NSColor.black
-        if charging {
-            // The lightning has two explicit colors, so the surrounding battery
+        if hasPowerBadge {
+            // Both power badges have two colors, so the surrounding battery
             // uses the status button's appearance instead of template tinting.
             (appearance ?? NSAppearance.currentDrawing()).performAsCurrentDrawingAppearance {
                 foreground = NSColor.labelColor.usingColorSpace(.deviceRGB) ?? .black
@@ -50,36 +49,79 @@ enum BatteryIcon {
                     let width = height * bolt.size.width / bolt.size.height
                     let target = NSRect(x: bounds.midX - width / 2, y: bounds.midY - height / 2,
                                         width: width, height: height)
-                    let border: CGFloat = 0.75
-                    for index in 0..<24 {
-                        let angle = CGFloat(index) * .pi * 2 / 24
-                        bolt.draw(in: target.offsetBy(dx: cos(angle) * border, dy: sin(angle) * border))
-                    }
-                    drawWhite(bolt, in: target)
+                    drawOutlinedWhite(bolt, in: target, border: 0.75)
                 }
             case .plug:
-                if let plug {
-                    // SF Symbols' plug points right; the menu-bar plug points up.
-                    NSGraphicsContext.saveGraphicsState()
-                    let transform = NSAffineTransform()
-                    transform.translateX(by: bounds.midX, yBy: bounds.midY)
-                    transform.rotate(byDegrees: 90)
-                    transform.concat()
-                    let height: CGFloat = 10.5
-                    let width = height * plug.size.height / plug.size.width
-                    plug.draw(in: NSRect(x: -height / 2, y: -width / 2, width: height, height: width),
-                              from: .zero, operation: .destinationOut, fraction: 1,
-                              respectFlipped: false, hints: nil)
-                    NSGraphicsContext.restoreGraphicsState()
-                }
+                // The menu-bar plug has shorter prongs and a narrower stem
+                // than powerplug.fill. Its 14 pt core extends beyond the battery.
+                let plug = nativePlugPath(in: NSRect(x: bounds.midX - 4.375,
+                                                     y: bounds.midY - 7,
+                                                     width: 8.75, height: 14))
+                plug.lineWidth = 2
+                plug.lineJoinStyle = .round
+                NSColor.black.setStroke()
+                plug.stroke()
+                NSColor(deviceWhite: 234.0 / 255.0, alpha: 1).setFill()
+                plug.fill()
             }
             return true
         }
-        image.isTemplate = !charging && snapshot.tint == .normal
+        image.isTemplate = !hasPowerBadge && snapshot.tint == .normal
         return image
     }
 
-    private static func drawWhite(_ symbol: NSImage, in target: NSRect) {
+    private static func nativePlugPath(in target: NSRect) -> NSBezierPath {
+        let path = NSBezierPath()
+        func point(_ x: CGFloat, _ y: CGFloat) -> NSPoint {
+            NSPoint(x: target.midX + x * target.width / 8.75,
+                    y: target.minY + y * target.height / 14)
+        }
+
+        // Coordinates describe the visible fill, before the 1 pt outer border.
+        path.move(to: point(-4.075, 11.5))
+        path.line(to: point(-2.65, 11.5))
+        path.line(to: point(-2.65, 13.85))
+        path.curve(to: point(-2.5, 14), controlPoint1: point(-2.65, 13.95),
+                   controlPoint2: point(-2.6, 14))
+        path.line(to: point(-0.95, 14))
+        path.curve(to: point(-0.8, 13.85), controlPoint1: point(-0.85, 14),
+                   controlPoint2: point(-0.8, 13.95))
+        path.line(to: point(-0.8, 11.5))
+        path.line(to: point(0.8, 11.5))
+        path.line(to: point(0.8, 13.85))
+        path.curve(to: point(0.95, 14), controlPoint1: point(0.8, 13.95),
+                   controlPoint2: point(0.85, 14))
+        path.line(to: point(2.5, 14))
+        path.curve(to: point(2.65, 13.85), controlPoint1: point(2.6, 14),
+                   controlPoint2: point(2.65, 13.95))
+        path.line(to: point(2.65, 11.5))
+        path.line(to: point(4.075, 11.5))
+        path.curve(to: point(4.375, 11.2), controlPoint1: point(4.275, 11.5),
+                   controlPoint2: point(4.375, 11.4))
+        path.line(to: point(4.375, 9))
+        path.curve(to: point(1.25, 4.807), controlPoint1: point(4.375, 7.065),
+                   controlPoint2: point(3.105, 5.36))
+        path.line(to: point(1.25, 0.4))
+        path.curve(to: point(0.85, 0), controlPoint1: point(1.25, 0.135),
+                   controlPoint2: point(1.115, 0))
+        path.line(to: point(-0.85, 0))
+        path.curve(to: point(-1.25, 0.4), controlPoint1: point(-1.115, 0),
+                   controlPoint2: point(-1.25, 0.135))
+        path.line(to: point(-1.25, 4.807))
+        path.curve(to: point(-4.375, 9), controlPoint1: point(-3.105, 5.36),
+                   controlPoint2: point(-4.375, 7.065))
+        path.line(to: point(-4.375, 11.2))
+        path.curve(to: point(-4.075, 11.5), controlPoint1: point(-4.375, 11.4),
+                   controlPoint2: point(-4.275, 11.5))
+        path.close()
+        return path
+    }
+
+    private static func drawOutlinedWhite(_ symbol: NSImage, in target: NSRect, border: CGFloat) {
+        for index in 0..<24 {
+            let angle = CGFloat(index) * .pi * 2 / 24
+            symbol.draw(in: target.offsetBy(dx: cos(angle) * border, dy: sin(angle) * border))
+        }
         let white = NSImage(size: symbol.size, flipped: false) { rect in
             symbol.draw(in: rect)
             NSColor.white.setFill()

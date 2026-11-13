@@ -1,13 +1,33 @@
 import AppKit
 import BatteryCore
 
-/// Native menu chrome with two noninteractive, normally colored data rows.
-final class BatteryMenu {
+/// Two readable data rows, with a charging action only when it is available.
+final class BatteryMenu: NSObject {
     let menu = NSMenu()
     private let rows = [BatteryMenuRow(), BatteryMenuRow()]
+    private let chargeItem = NSMenuItem()
+    private var chargeAction: (() -> Void)?
 
-    init() {
+    func setChargeAction(title: String?, enabled: Bool = true, onClick: @escaping () -> Void) {
+        guard let title else {
+            while menu.items.count > 2 { menu.removeItem(at: 2) }
+            chargeAction = nil
+            return
+        }
+        if menu.items.count == 2 {
+            menu.addItem(.separator())
+            menu.addItem(chargeItem)
+        }
+        chargeItem.title = title
+        chargeItem.isEnabled = enabled
+        chargeAction = onClick
+    }
+
+    override init() {
+        super.init()
         menu.autoenablesItems = false
+        chargeItem.target = self
+        chargeItem.action = #selector(chargeToFull)
         for row in rows {
             let item = NSMenuItem()
             item.isEnabled = false
@@ -15,6 +35,8 @@ final class BatteryMenu {
             menu.addItem(item)
         }
     }
+
+    @objc private func chargeToFull() { chargeAction?() }
 
     func update(snapshot: BatterySnapshot, text: BatteryText) {
         rows[0].setContent(label: text.chargeLabel, value: text.chargeValue(snapshot: snapshot))

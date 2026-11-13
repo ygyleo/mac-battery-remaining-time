@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
     private var preferencesSubscription: AnyCancellable?
+    private var appearanceObservation: NSKeyValueObservation?
     private let appQuitItem = NSMenuItem()
     private let windowMenuItem = NSMenuItem()
     private let closeWindowItem = NSMenuItem()
@@ -25,6 +26,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         statusItem.autosaveName = "BatteryTime"
         batteryMenu.menu.delegate = self
         statusItem.menu = batteryMenu.menu
+        appearanceObservation = statusItem.button?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            self?.update()
+        }
         configureApplicationMenu()
         monitor.onChange = { [weak self] _ in self?.update() }
         preferencesSubscription = preferences.$language.combineLatest(preferences.$showTimeInMenuBar)
@@ -69,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard let button = statusItem?.button else { return }
         let snapshot = monitor.snapshot
         let text = preferences.text
-        button.image = BatteryIcon.image(for: snapshot)
+        button.image = BatteryIcon.image(for: snapshot, appearance: button.effectiveAppearance)
         button.imagePosition = preferences.showTimeInMenuBar ? .imageLeading : .imageOnly
         button.title = preferences.showTimeInMenuBar ? " " + text.statusTitle(snapshot: snapshot) : ""
         button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)

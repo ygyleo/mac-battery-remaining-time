@@ -19,7 +19,7 @@ A small, native macOS menu bar app that keeps your battery's remaining time in v
 
 ## Install
 
-1. Download `Battery-Time-1.1.0-arm64.dmg` from [Releases](https://github.com/ygyleo/mac-battery-remaining-time/releases).
+1. Download `Battery-Time-1.1.1-arm64.dmg` from [Releases](https://github.com/ygyleo/mac-battery-remaining-time/releases).
 2. Open the disk image and drag **Battery Time** into **Applications**.
 3. Launch it from Applications, Finder, or Spotlight to open Settings. Closing Settings keeps Battery Time running in the menu bar and removes its Dock icon.
 
@@ -44,7 +44,7 @@ git clone https://github.com/ygyleo/mac-battery-remaining-time.git
 cd mac-battery-remaining-time
 swift test --scratch-path build/swift-tests
 bash scripts/build-release.sh
-bash scripts/package-dmg.sh 1.1.0
+bash scripts/package-dmg.sh 1.1.1
 ```
 
 The application and disk image are written to `dist/`. `SHA256SUMS.txt` contains the release checksum. To work in Xcode, run `xcodegen generate` and open `BatteryTime.xcodeproj`.

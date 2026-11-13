@@ -19,7 +19,7 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/ygyleo/mac-battery-remaining-time/releases) 下载 `Battery-Time-1.1.0-arm64.dmg`。
+1. 从 [Releases](https://github.com/ygyleo/mac-battery-remaining-time/releases) 下载 `Battery-Time-1.1.1-arm64.dmg`。
 2. 打开 DMG，将 **Battery Time** 拖到 **Applications（应用程序）**。
 3. 从应用程序文件夹、Finder 或 Spotlight 打开，即可显示设置窗口。关闭设置后，应用继续驻留菜单栏，Dock 图标随之隐藏。
 
@@ -44,7 +44,7 @@ git clone https://github.com/ygyleo/mac-battery-remaining-time.git
 cd mac-battery-remaining-time
 swift test --scratch-path build/swift-tests
 bash scripts/build-release.sh
-bash scripts/package-dmg.sh 1.1.0
+bash scripts/package-dmg.sh 1.1.1
 ```
 
 应用和 DMG 输出到 `dist/`，`SHA256SUMS.txt` 提供安装包校验值。使用 Xcode 开发时，先运行 `xcodegen generate`，再打开 `BatteryTime.xcodeproj`。
